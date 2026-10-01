@@ -51,11 +51,16 @@ public class FundingSelector {
     }
 
     public FundingSelection select(List<CandidateInstruction> candidates, BigDecimal availableBalance) {
+        // Convert the available balance to integer minor units (cents).
         long capacity = toMinorUnits(availableBalance);
         if (capacity < 0) {
             throw new IllegalArgumentException("availableBalance must not be negative");
         }
 
+        /*
+          Convert domain candidates into knapsack items and skip candidates
+          that cannot fit within the available balance
+         */
         List<KnapsackItem> items = new ArrayList<>(candidates.size());
         long gcd = capacity;
         for (int i = 0; i < candidates.size(); i++) {
@@ -65,13 +70,16 @@ public class FundingSelector {
             if (amount > capacity) {
                 continue; // cannot be funded on its own, let alone together with others
             }
+            // Keep the original candidate index so we can map the solver result back later.
             items.add(new KnapsackItem(i, amount, fee));
             gcd = gcd(gcd, amount);
         }
+
         if (items.isEmpty()) {
             return FundingSelection.of(List.of());
         }
 
+        // Reduce the capacity and item weights using their gcd to make the knapsack problem smaller
         List<KnapsackItem> scaledItems = new ArrayList<>(items.size());
         for (KnapsackItem item : items) {
             scaledItems.add(new KnapsackItem(item.index(), item.weight() / gcd, item.value()));
@@ -85,6 +93,8 @@ public class FundingSelector {
         for (int index : solution.selectedIndexes()) {
             selected.add(candidates.get(index));
         }
+
+        // Build the final result with the selected candidates and calculated totals
         return FundingSelection.of(selected);
     }
 

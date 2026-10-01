@@ -3,7 +3,7 @@ package ge.kursi.settlement.domain;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** Outcome of the selection algorithm: which candidates to fund and the resulting totals. */
+/** Outcome of the selection algorithm: which candidates to fund and the resulting totals */
 public record FundingSelection(List<CandidateInstruction> selectedInstructions,
                                BigDecimal totalSettlementConsumed,
                                BigDecimal totalExpectedFee) {

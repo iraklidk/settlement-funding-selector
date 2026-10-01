@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Lightweight view of a funding run for the audit-trail listing. */
+/** Lightweight view of a funding run for the audit-trail listing */
 public record FundingRunSummary(UUID requestId,
                                 BigDecimal availableSettlementBalance,
                                 BigDecimal totalSettlementConsumed,

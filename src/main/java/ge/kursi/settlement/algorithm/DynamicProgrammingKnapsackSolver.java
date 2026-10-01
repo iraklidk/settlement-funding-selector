@@ -5,13 +5,6 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Classic bottom-up 0/1 knapsack in {@code O(n * capacity)} time.
- * <p>
- * Memory: two {@code long[capacity + 1]} tables plus one bit per (item, capacity) pair for
- * reconstruction, i.e. roughly {@code n * capacity / 8} bytes. Callers are expected to keep
- * {@code n * capacity} bounded (see {@link FundingSelector}).
- */
 public final class DynamicProgrammingKnapsackSolver implements KnapsackSolver {
 
     @Override
@@ -42,7 +35,7 @@ public final class DynamicProgrammingKnapsackSolver implements KnapsackSolver {
                 continue;
             }
             int weight = (int) item.weight();
-            for (int w = cap; w >= weight; w--) {
+            for (int w = cap; w >= weight; w--) { // heart of dp
                 long candidateValue = bestValue[w - weight] + item.value();
                 long candidateWeight = bestWeight[w - weight] + weight;
                 if (candidateValue > bestValue[w]

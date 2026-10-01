@@ -4,15 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Exact depth-first branch-and-bound 0/1 knapsack.
- * <p>
- * Items are explored in descending value-density order; the fractional (LP relaxation) knapsack
- * value of the remaining items is used as an upper bound to prune subtrees. Running time does not
- * depend on the capacity magnitude, which makes this the fallback for large balances where a DP
- * table would not fit in memory. The worst case is exponential in the number of items, but with
- * density ordering it is fast for realistic instruction sets.
- */
 public final class BranchAndBoundKnapsackSolver implements KnapsackSolver {
 
     @Override
@@ -66,38 +57,38 @@ public final class BranchAndBoundKnapsackSolver implements KnapsackSolver {
                 bestWeight = weight;
                 System.arraycopy(currentTaken, 0, bestTaken, 0, currentTaken.length);
             }
-            if (depth == items.size() || !canImprove(depth, weight, value)) {
+            if (depth == items.size()) {
                 return;
             }
             KnapsackItem item = items.get(depth);
             if (weight + item.weight() <= capacity) {
                 currentTaken[depth] = true;
                 explore(depth + 1, weight + item.weight(), value + item.value());
-                currentTaken[depth] = false;
+                currentTaken[depth] = false; // BACKTRACK
             }
             explore(depth + 1, weight, value);
         }
 
-        /** Fractional-knapsack upper bound: can the remaining items still beat the incumbent? */
-        private boolean canImprove(int depth, long weight, long value) {
-            long remaining = capacity - weight;
-            long bound = value;
-            for (int i = depth; i < items.size(); i++) {
-                KnapsackItem item = items.get(i);
-                if (item.weight() <= remaining) {
-                    remaining -= item.weight();
-                    bound += item.value();
-                } else {
-                    // +1 absorbs floating-point rounding so the bound stays a true upper bound.
-                    bound += (long) Math.ceil((double) remaining * item.value() / item.weight()) + 1;
-                    break;
-                }
-            }
-            if (bound < bestValue) {
-                return false;
-            }
-            // Equal value can only win by being lighter, and weight never decreases down the tree.
-            return bound > bestValue || weight < bestWeight;
-        }
+//        /** Fractional-knapsack upper bound: can the remaining items still beat the incumbent? */
+//        private boolean canImprove(int depth, long weight, long value) {
+//            long remaining = capacity - weight;
+//            long bound = value;
+//            for (int i = depth; i < items.size(); i++) {
+//                KnapsackItem item = items.get(i);
+//                if (item.weight() <= remaining) {
+//                    remaining -= item.weight();
+//                    bound += item.value();
+//                } else {
+//                    // +1 absorbs floating-point rounding so the bound stays a true upper bound.
+//                    bound += (long) Math.ceil((double) remaining * item.value() / item.weight()) + 1;
+//                    break;
+//                }
+//            }
+//            if (bound < bestValue) {
+//                return false;
+//            }
+//            // Equal value can only win by being lighter, and weight never decreases down the tree.
+//            return bound > bestValue || weight < bestWeight;
+//        }
     }
 }

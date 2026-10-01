@@ -1,0 +1,15 @@
+﻿{
+  "availableSettlementBalance": 100.00,
+  "candidateInstructions": [
+    {
+      "instructionReference": "TEST-101",
+      "instructionAmount": 500.00,
+      "expectedFee": 50.00
+    },
+    {
+      "instructionReference": "TEST-102",
+      "instructionAmount": 750.00,
+      "expectedFee": 80.00
+    }
+  ]
+}

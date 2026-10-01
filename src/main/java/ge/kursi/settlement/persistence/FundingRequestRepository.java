@@ -9,10 +9,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FundingRequestRepository extends JpaRepository<FundingRequestEntity, UUID> {
 
-    /** Loads a run together with all its candidate instructions in a single query. */
+    // Loads a run together with all its candidate instructions in a single query
     @EntityGraph(attributePaths = "instructions")
     Optional<FundingRequestEntity> findWithInstructionsById(UUID id);
 
-    /** Audit trail, newest first. Instructions stay lazy: the listing only needs the header row. */
+    // Audit trail, newest first. Instructions stay lazy: the listing only needs the header row
     Page<FundingRequestEntity> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
 }

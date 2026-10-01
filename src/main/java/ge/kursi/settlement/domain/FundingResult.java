@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** A persisted funding run, as returned to API clients. */
+/** A persisted funding run, as returned to API clients */
 public record FundingResult(UUID requestId,
                             BigDecimal availableSettlementBalance,
                             List<CandidateInstruction> candidateInstructions,

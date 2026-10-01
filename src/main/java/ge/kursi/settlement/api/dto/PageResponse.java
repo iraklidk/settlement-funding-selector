@@ -3,7 +3,7 @@ package ge.kursi.settlement.api.dto;
 import java.util.List;
 import org.springframework.data.domain.Page;
 
-/** Stable pagination envelope, decoupled from Spring Data's {@link Page} serialisation. */
+/** Stable pagination envelope, decoupled from Spring Data's {@link Page} serialisation */
 public record PageResponse<T>(List<T> content,
                               int page,
                               int size,

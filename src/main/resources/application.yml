@@ -31,8 +31,18 @@ settlement:
     # Max (instructions x scaled capacity) cells for the DP solver; larger instances use branch-and-bound.
     dp-max-cells: 50000000
 
+info:
+  app:
+    name: settlement-funding-selector
+    description: Settlement funding selection service
+    version: 1.0.0
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  info:
+    env:
+      enabled: true
+

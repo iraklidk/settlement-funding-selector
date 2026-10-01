@@ -24,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ge.kursi.settlement.persistence.FundingInstructionRepository;
 
 /**
  * Orchestrates a funding run: validates the request semantically, runs the selection
@@ -36,16 +37,25 @@ public class SettlementFundingService {
 
     private final FundingSelector fundingSelector;
     private final FundingRequestRepository repository;
+    private final FundingInstructionRepository instructionRepository;
     private final Clock clock;
 
     public SettlementFundingService(FundingSelector fundingSelector,
                                     FundingRequestRepository repository,
-                                    Clock clock) {
+                                    Clock clock,
+                                    FundingInstructionRepository instructionRepository) {
         this.fundingSelector = fundingSelector;
         this.repository = repository;
         this.clock = clock;
+        this.instructionRepository = instructionRepository;
+
     }
 
+    /**
+     * Normalise instructions and balance, run the funding selection algorithm
+     * create the funding request entity with the calculated totals
+     * add all insrtuctions with their selected status then return the resulting FundingResult
+     */
     @Transactional
     public FundingResult fund(BigDecimal availableSettlementBalance, List<CandidateInstruction> candidates) {
         List<CandidateInstruction> normalised = normalise(candidates);
@@ -75,13 +85,46 @@ public class SettlementFundingService {
                     selectedReferences.contains(candidate.instructionReference())));
         }
 
+        BigDecimal remainingBalance = balance.subtract(entity.getTotalSettlementConsumed());
+
+        if (remainingBalance.signum() <= 0) {
+            repository.save(entity);
+            return toResult(entity);
+        }
+
+        List<FundingInstructionEntity> unselectedEntities =
+                instructionRepository.findBySelectedFalseAndInstructionAmountLessThanEqual(remainingBalance);
+
+        if (unselectedEntities.isEmpty()) {
+            repository.save(entity);
+            return toResult(entity);
+        }
+
+        List<CandidateInstruction> additionalCandidates =
+                unselectedEntities.stream()
+                        .map(SettlementFundingService::toCandidateInstruction)
+                        .toList();
+
+        FundingSelection additionalSelection =
+                fundingSelector.select(additionalCandidates, remainingBalance);
+
+        for (CandidateInstruction selected : additionalSelection.selectedInstructions()) {
+            entity.addInstruction(new FundingInstructionEntity(
+                    entity.getCandidateCount(),
+                    selected.instructionReference(),
+                    selected.instructionAmount(),
+                    selected.expectedFee(),
+                    true));
+        }
+
         repository.save(entity);
-        log.info("Funding run {}: {}/{} instructions selected, consumed {} of {}, fee {}",
-                entity.getId(), entity.getSelectedCount(), entity.getCandidateCount(),
-                entity.getTotalSettlementConsumed(), balance, entity.getTotalExpectedFee());
         return toResult(entity);
     }
 
+    /**
+     * Find the funding request by ID, convert it to a FundingResult
+     * throw an exception if the request does not exist
+     */
     @Transactional(readOnly = true)
     public FundingResult getById(UUID requestId) {
         return repository.findWithInstructionsById(requestId)
@@ -89,12 +132,13 @@ public class SettlementFundingService {
                 .orElseThrow(() -> new FundingRequestNotFoundException(requestId));
     }
 
+    /** Fetch funding runs with pagination, newest-first ordering, and map each entity to a summary */
     @Transactional(readOnly = true)
     public Page<FundingRunSummary> list(Pageable pageable) {
         return repository.findAllByOrderByCreatedAtDescIdDesc(pageable).map(SettlementFundingService::toSummary);
     }
 
-    /** Trims references, normalises money scale and rejects duplicate references. */
+    /** Trims references, normalises money scale and rejects duplicate references */
     private static List<CandidateInstruction> normalise(List<CandidateInstruction> candidates) {
         List<CandidateInstruction> result = new ArrayList<>(candidates.size());
         Set<String> seen = new HashSet<>();
@@ -111,10 +155,15 @@ public class SettlementFundingService {
         return result;
     }
 
+    /** Sets the value to the required money scale without allowing rounding */
     private static BigDecimal money(BigDecimal value) {
         return value.setScale(FundingSelector.MONEY_SCALE, RoundingMode.UNNECESSARY);
     }
 
+    /**
+     * Converts a persisted funding request entity into a FundingResult.
+     * Rebuilds all candidate instructions and separates the selected ones.
+     */
     private static FundingResult toResult(FundingRequestEntity entity) {
         List<CandidateInstruction> candidates = new ArrayList<>(entity.getInstructions().size());
         List<CandidateInstruction> selected = new ArrayList<>(entity.getSelectedCount());
@@ -138,6 +187,7 @@ public class SettlementFundingService {
                 entity.getCreatedAt());
     }
 
+    /** Converts a persisted funding request entity into a summary used for listing */
     private static FundingRunSummary toSummary(FundingRequestEntity entity) {
         return new FundingRunSummary(
                 entity.getId(),
@@ -148,4 +198,13 @@ public class SettlementFundingService {
                 entity.getSelectedCount(),
                 entity.getCreatedAt());
     }
+
+    private static CandidateInstruction toCandidateInstruction(FundingInstructionEntity entity) {
+        return new CandidateInstruction(
+                entity.getInstructionReference(),
+                entity.getInstructionAmount(),
+                entity.getExpectedFee()
+        );
+    }
+
 }
